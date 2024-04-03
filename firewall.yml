@@ -1,0 +1,74 @@
+---
+- name: Set up firewall
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install UFW on Ubuntu
+      ansible.builtin.apt: 
+        name: ufw
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Install firewalld on CentOS
+      ansible.builtin.yum: 
+        name: firewalld
+        state: present
+      when: ansible_distribution == "CentOS"
+
+    - name: Enable firewall service on Ubuntu
+      ansible.builtin.service:
+        name: ufw
+        enabled: yes
+        state: started
+      when: ansible_distribution == "Ubuntu"      
+
+    - name: Enable firewall service on CentOS
+      ansible.builtin.service:
+        name: firewalld
+        enabled: yes
+        state: started
+      when: ansible_distribution == "CentOS"
+
+    - name: Allow SSH through firewall (Ubuntu)
+      ansible.builtin.ufw:
+        rule: allow
+        name: OpenSSH
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Allow SSH through firewall (CentOS)
+      ansible.builtin.firewalld:
+        service: ssh
+        state: enabled
+        immediate: yes
+      when: ansible_distribution == "CentOS"
+
+    - name: Enable UFW
+      ansible.builtin.command: ufw --force enable
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Enable firewalld
+      ansible.builtin.service:
+        name: firewalld
+        enabled: yes
+        state: started
+      when: ansible_distribution == "CentOS"
+
+    - name: Allow additional ports through firewall on CentOS
+      ansible.builtin.firewalld:
+        port: "{{ item }}"
+        permanent: yes
+        state: enabled
+      loop:
+        - 80/tcp #HTTPS
+        - 443/tcp #HTTPS
+      when: ansible_distribution == "CentOS"
+
+    - name: Allow additional ports through firewall on Ubuntu
+      ansible.builtin.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - 80 #HTTP
+        - 443 #HTTPS
+      when: ansible_distribution == "Ubuntu"   
